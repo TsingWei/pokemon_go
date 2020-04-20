@@ -10,7 +10,8 @@
 using namespace std;
 using namespace cv;
 
-static const bool DEBUG = false;
+static const bool DEBUG = true;
+static const bool MOVE = false;
 
 class PokemonCatching
 {
@@ -43,9 +44,21 @@ public:
     // cv::destroyWindow(OPENCV_WINDOW);
   }
 
+  static bool cmp(Point a,Point b){
+    if(a.x == b.x){
+      return a.y<b.y;
+    }
+    return a.x<b.x;
+  }
+
+
   void detectRect(cv_bridge::CvImagePtr & cv_ptr){
     Mat threshold_output;
     vector<vector<Point> > contours;
+    vector<Point> contours_point;
+    vector<vector<Point> > all_contours;
+    vector<vector<Point> > pokemon_contours;
+    vector<Point> all_contours_point;
     vector<Vec4i> hierarchy;
     Mat src_gray;
     Mat frame;
@@ -69,128 +82,124 @@ public:
     }
 
     cvtColor(roi, src_gray, COLOR_BGR2GRAY);  //颜色转换
-    Canny(src_gray, threshold_output, 70, 100, (3, 3));   //使用Canny检测边缘
+
+    Canny(src_gray, threshold_output, 75, 150, (3, 3));   //使用Canny检测边缘
     cv::morphologyEx(threshold_output, closed, cv::MORPH_CLOSE, element5);  //形态学闭运算函数  
 
     if(DEBUG){
-      // imshow("canny", threshold_output);
+      imshow("canny", threshold_output);
       // waitKey();
       imshow("erode", closed);
-      // waitKey();
+      // waitKey(3);
     }
-
-    // findContours(closed, contours, hierarchy, RETR_EXTERNAL, CHAIN_APPROX_NONE, Point());
-    findContours(closed, contours, hierarchy, CV_RETR_CCOMP, CHAIN_APPROX_NONE, Point());
-    // findContours(threshold_output, contours, hierarchy, RETR_CCOMP, CHAIN_APPROX_NONE, Point());
-
-    if(DEBUG){
-      cout << "contours.size()" << contours.size() << endl;
-    }
+    findContours(closed, contours, hierarchy, RETR_EXTERNAL, CHAIN_APPROX_NONE, Point());
     
-    rect = boundingRect(contours[0]);
+    rect = boundingRect(contours[contours.size()-1]);
     
     if(DEBUG){
-      for (int i = 0; i < contours.size(); i++){
-        for (int j = 0; j < contours[i].size(); j++){
+      cout << "contours.size(): " << contours.size() << endl;
+      // // draw all point
+      // for (int i = 0; i < contours.size(); i++){
+      //   for (int j = 0; j < contours[i].size(); j++){
+      //     // cout << contours[i][j] << endl;
+      //     image.at<Vec3b>(contours[i][j].y, contours[i][j].x) = (0, 0, 255);
+      //   }
+      // }
 
-          // cout << contours[i][j] << endl;
-          image.at<Vec3b>(contours[i][j].y, contours[i][j].x) = (0, 0, 255);
-        }
-
+      for (int i = 0; i < contours[0].size(); i++){
+          image.at<Vec3b>(contours[0][i].y, contours[0][i].x) = (0, 0, 255);
       }
-      // show all borders
-      // imshow("allborders", image);
-      // waitKey();
-      // show rect in 0th
-      rectangle(image2,rect,color, 2);
-      imshow("rectin0", image2);
-      // waitKey();
-      // show tect in 1th
-      // rect1 = boundingRect(contours[1]);
-      // rectangle(image3,rect1,color, 2);
-      // imshow("rectin1", image3);
+      imshow("image", image);
+
+      // show tect in 0th
+      rect1 = boundingRect(contours[0]);
+      rectangle(image2,rect1,color, 2);
+      imshow("rectin1", image2);
       
-      waitKey(3);
+      waitKey();
 
     }
-    
-    // add(frame, image, frame);
-    // cvSetImageROI(frame, currentRect);
-
-
+  
     // move
-    if((rect.tl().x > 0)&&(rect.tl().y >0)&&(rect.br().x < roi_width)&&(rect.br().y < roi_height)){
-      ROS_INFO("MOVE");
-      geometry_msgs::Twist speed;
-      // // x前后线速度 z左右旋转角速度
-      speed.linear.x=0.2;
-      // 左边空隙大
-      if(rect.tl().x - (roi_width-rect.br().x) > 3){
-        if(DEBUG)
-          cout << "in z = 1" << endl;
-        speed.angular.z=-0.1;
-      }
-      // 右边空隙大
-      else if(rect.tl().x - (roi_width-rect.br().x) < -3){
-        if(DEBUG)
-          cout << "in z = -1" << endl;
-        speed.angular.z=0.1;
-      }
-      else{
-        if(DEBUG)
-          cout << "in z = 0" << endl;
-        speed.angular.z=0;
-      }
-      vel_pub_.publish(speed); 
-      ros::Duration(0.2).sleep(); 
-    }
-    // left width more then 5
-    // else if(rect.tl().x>5){
-    //   ROS_INFO("GO RIGHT");
-    //   geometry_msgs::Twist speed;
-    //   speed.linear.x=0.02;
-    //   speed.angular.z=-0.1;
-    //   vel_pub_.publish(speed); 
-    //   ros::Duration(0.1).sleep(); 
-    // }
-    // // right width more then 5
-    // else if((roi_width-rect.br().x)>5){
-    //   ROS_INFO("GO LEFT");
-    //   geometry_msgs::Twist speed;
-    //   speed.linear.x=0.02;
-    //   speed.angular.z=0.1;
-    //   vel_pub_.publish(speed); 
-    //   ros::Duration(0.1).sleep(); 
-    // }
-    // stop
-    else{
-      ROS_INFO("STOP");
-      vel_pub_.publish(geometry_msgs::Twist());
-      exit = 1;
-      rect1 = boundingRect(contours[1]);
-      rectangle(roi,rect,color, 2);
-      rectangle(frame, cv::Point(roi_tl_x, roi_tl_y), cv::Point(roi_br_x, roi_br_y), CV_RGB(255,0,0));
-      // save img
-      vector<cv::String> file_names;
-      vector<string> split_string;
-      glob(folder_path, file_names);
-      int pokemon_img_num = 0;
-      for (int i = 0; i < file_names.size(); i++) {
-        // ROS_INFO("filename: %s", file_names[i].c_str());
-        int pos = file_names[i].find_last_of("/");
-        string file_name(file_names[i].substr(pos + 1));
-        if(file_name.compare(0, 7, "pokemon")==0){
-          pokemon_img_num++;
-
+    if(MOVE){
+      if((rect.tl().x > 0)&&(rect.tl().y >0)&&(rect.br().x < roi_width)&&(rect.br().y < roi_height)){
+        ROS_INFO("MOVE");
+        geometry_msgs::Twist speed;
+        // // x前后线速度 z左右旋转角速度
+        speed.linear.x=0.1;
+        // 左边空隙大
+        if(rect.tl().x - (roi_width-rect.br().x) > 3){
+          if(DEBUG)
+            cout << "in z = 1" << endl;
+          speed.angular.z=-0.1;
         }
+        // 右边空隙大
+        else if(rect.tl().x - (roi_width-rect.br().x) < -3){
+          if(DEBUG)
+            cout << "in z = -1" << endl;
+          speed.angular.z=0.1;
+        }
+        else{
+          if(DEBUG)
+            cout << "in z = 0" << endl;
+          speed.angular.z=0;
+        }
+        vel_pub_.publish(speed); 
+        ros::Duration(0.2).sleep(); 
       }
-      pokemon_img_num ++;
-      string file_name = folder_path + "pokemon_" + to_string(pokemon_img_num) + ".jpg";
-      imwrite(file_name, frame);
-      ros::shutdown();
-      return;
+      // // left width more then 5
+      // else if(rect.tl().x>5){
+      //   ROS_INFO("GO RIGHT");
+      //   geometry_msgs::Twist speed;
+      //   speed.linear.x=0.02;
+      //   speed.angular.z=-0.1;
+      //   vel_pub_.publish(speed); 
+      //   ros::Duration(0.1).sleep(); 
+      // }
+      // // right width more then 5
+      // else if((roi_width-rect.br().x)>5){
+      //   ROS_INFO("GO LEFT");
+      //   geometry_msgs::Twist speed;
+      //   speed.linear.x=0.02;
+      //   speed.angular.z=0.1;
+      //   vel_pub_.publish(speed); 
+      //   ros::Duration(0.1).sleep(); 
+      // }
+      // stop
+      else{
+        ROS_INFO("STOP");
+        vel_pub_.publish(geometry_msgs::Twist());
+        exit = 1;
+
+        // search pokemon border
+        findContours(closed, pokemon_contours, hierarchy,  RETR_TREE, CHAIN_APPROX_NONE, Point());
+        rect1 = boundingRect(pokemon_contours[0]);
+        rectangle(roi,rect1,color, 2);
+        rectangle(frame, cv::Point(roi_tl_x, roi_tl_y), cv::Point(roi_br_x, roi_br_y), CV_RGB(255,0,0));
+
+        // save img
+        vector<cv::String> file_names;
+        vector<string> split_string;
+        glob(folder_path, file_names);
+        int pokemon_img_num = 0;
+        for (int i = 0; i < file_names.size(); i++) {
+          // ROS_INFO("filename: %s", file_names[i].c_str());
+          int pos = file_names[i].find_last_of("/");
+          string file_name(file_names[i].substr(pos + 1));
+          if(file_name.compare(0, 7, "pokemon")==0){
+            pokemon_img_num++;
+          }
+        }
+        pokemon_img_num ++;
+        string file_name = folder_path + "pokemon_" + to_string(pokemon_img_num) + ".jpg";
+        imwrite(file_name, frame);
+        ros::shutdown();
+
+        return;
+      }
     }
-    // exit = 1;
+    if(!MOVE)
+      exit = 1;
     // image_sub_.shutdown();
   }
 
@@ -221,8 +230,8 @@ public:
     }
     if(exit!=1)
       detectRect(cv_ptr);
-    // cout << "finish" << endl;
-    // 1*1 半格
+    
+    // test 1*1 半格
     if(flag == 2){
       ROS_INFO("detect finish");
       // ros::Rate loopRate(10);
