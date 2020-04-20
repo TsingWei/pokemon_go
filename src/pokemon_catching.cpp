@@ -27,7 +27,7 @@ class PokemonCatching
   int roi_height;
   int roi_width;
   int exit = 0;
-  string folder_path = "/home/wzl/pokemon_ws/";
+  // string folder_path = "/home/wzl/pokemon_ws/";
 
 
 public:
@@ -167,6 +167,14 @@ public:
       // }
       // stop
       else{
+        char *env_val = getenv("CMAKE_PREFIX_PATH");
+        char *pathx = strstr(env_val, "/");
+        char *pathy = strstr(env_val, "/devel");
+        int len = pathy - pathx + 1;
+        char *fpath = (char*)malloc((len) * sizeof(char));
+        memcpy(fpath, pathx, len - 1);
+        fpath[len-1] = '\0';
+        string folder_path(fpath);
         ROS_INFO("STOP");
         vel_pub_.publish(geometry_msgs::Twist());
         exit = 1;
