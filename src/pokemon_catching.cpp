@@ -10,8 +10,8 @@
 using namespace std;
 using namespace cv;
 
-static const bool DEBUG = true;
-static const bool MOVE = false;
+static const bool DEBUG = false;
+static const bool MOVE = true;
 
 class PokemonCatching
 {
@@ -83,7 +83,7 @@ public:
 
     cvtColor(roi, src_gray, COLOR_BGR2GRAY);  //颜色转换
 
-    Canny(src_gray, threshold_output, 75, 150, (3, 3));   //使用Canny检测边缘
+    Canny(src_gray, threshold_output, 65, 150, (3, 3));   //使用Canny检测边缘
     cv::morphologyEx(threshold_output, closed, cv::MORPH_CLOSE, element5);  //形态学闭运算函数  
 
     if(DEBUG){
@@ -167,14 +167,31 @@ public:
       // }
       // stop
       else{
+        if((rect.tl().x>10) && (rect.tl().y>5) && ((roi_height-rect.br().y)>5)){
+          ROS_INFO("GO RIGHT");
+          geometry_msgs::Twist speed;
+          speed.linear.x=0.1;
+          speed.angular.z=-0.2;
+          vel_pub_.publish(speed); 
+          ros::Duration(0.2).sleep(); 
+        }
+        if((rect.tl().y>5) && ((roi_height-rect.br().y)>5) && ((roi_width-rect.br().x)>10)){
+          ROS_INFO("GO LEFT");
+          geometry_msgs::Twist speed;
+          speed.linear.x=0.1;
+          speed.angular.z=0.2;
+          vel_pub_.publish(speed); 
+          ros::Duration(0.2).sleep(); 
+        }
         char *env_val = getenv("CMAKE_PREFIX_PATH");
         char *pathx = strstr(env_val, "/");
-        char *pathy = strstr(env_val, "/devel");
+        char *pathy = strstr(env_val, "devel");
         int len = pathy - pathx + 1;
         char *fpath = (char*)malloc((len) * sizeof(char));
         memcpy(fpath, pathx, len - 1);
         fpath[len-1] = '\0';
         string folder_path(fpath);
+
         ROS_INFO("STOP");
         vel_pub_.publish(geometry_msgs::Twist());
         exit = 1;
@@ -189,6 +206,7 @@ public:
         vector<cv::String> file_names;
         vector<string> split_string;
         glob(folder_path, file_names);
+
         int pokemon_img_num = 0;
         for (int i = 0; i < file_names.size(); i++) {
           // ROS_INFO("filename: %s", file_names[i].c_str());
