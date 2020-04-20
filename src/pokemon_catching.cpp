@@ -83,7 +83,7 @@ public:
 
     cvtColor(roi, src_gray, COLOR_BGR2GRAY);  //颜色转换
 
-    Canny(src_gray, threshold_output, 65, 150, (3, 3));   //使用Canny检测边缘
+    Canny(src_gray, threshold_output, 85, 140, (3, 3));   //使用Canny检测边缘
     cv::morphologyEx(threshold_output, closed, cv::MORPH_CLOSE, element5);  //形态学闭运算函数  
 
     if(DEBUG){
@@ -125,16 +125,17 @@ public:
       if((rect.tl().x > 0)&&(rect.tl().y >0)&&(rect.br().x < roi_width)&&(rect.br().y < roi_height)){
         ROS_INFO("MOVE");
         geometry_msgs::Twist speed;
+        int dis = 3;
         // // x前后线速度 z左右旋转角速度
-        speed.linear.x=0.1;
+        speed.linear.x=0.2;
         // 左边空隙大
-        if(rect.tl().x - (roi_width-rect.br().x) > 3){
+        if(rect.tl().x - (roi_width-rect.br().x) > dis){
           if(DEBUG)
             cout << "in z = 1" << endl;
           speed.angular.z=-0.1;
         }
         // 右边空隙大
-        else if(rect.tl().x - (roi_width-rect.br().x) < -3){
+        else if(rect.tl().x - (roi_width-rect.br().x) < -dis){
           if(DEBUG)
             cout << "in z = -1" << endl;
           speed.angular.z=0.1;
@@ -145,7 +146,7 @@ public:
           speed.angular.z=0;
         }
         vel_pub_.publish(speed); 
-        ros::Duration(0.2).sleep(); 
+        ros::Duration(0.1).sleep();
       }
       // // left width more then 5
       // else if(rect.tl().x>5){
@@ -173,7 +174,7 @@ public:
           speed.linear.x=0.1;
           speed.angular.z=-0.2;
           vel_pub_.publish(speed); 
-          ros::Duration(0.2).sleep(); 
+          ros::Duration(0.1).sleep(); 
         }
         if((rect.tl().y>5) && ((roi_height-rect.br().y)>5) && ((roi_width-rect.br().x)>10)){
           ROS_INFO("GO LEFT");
@@ -181,7 +182,7 @@ public:
           speed.linear.x=0.1;
           speed.angular.z=0.2;
           vel_pub_.publish(speed); 
-          ros::Duration(0.2).sleep(); 
+          ros::Duration(0.1).sleep(); 
         }
         char *env_val = getenv("CMAKE_PREFIX_PATH");
         char *pathx = strstr(env_val, "/");
