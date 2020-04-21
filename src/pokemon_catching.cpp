@@ -65,6 +65,7 @@ public:
     //自定义形态学元素结构
     cv::Mat element5(9, 9, CV_8U, cv::Scalar(1));//5*5正方形，8位uchar型，全1结构元素  
     Scalar color = Scalar(0,255,0);
+    Scalar outColor = Scalar(0,0,255);
     cv::Mat closed;
     Rect rect;
     Rect rect1;
@@ -196,11 +197,40 @@ public:
         vel_pub_.publish(geometry_msgs::Twist());
         exit = 1;
 
-        // search pokemon border
+        // search and draw pokemon border
         findContours(closed, pokemon_contours, hierarchy,  RETR_TREE, CHAIN_APPROX_NONE, Point());
         rect1 = boundingRect(pokemon_contours[0]);
-        rectangle(roi,rect1,color, 2);
-        rectangle(frame, cv::Point(roi_tl_x, roi_tl_y), cv::Point(roi_br_x, roi_br_y), CV_RGB(255,0,0));
+        int rect1_tl_x;
+        int rect1_tl_y;
+        int rect1_br_x;
+        int rect1_br_y;
+        int diff = 6;
+        if((abs(rect1.tl().x-rect.tl().x)<=2)){
+          rect1_tl_x = rect1.tl().x + diff;
+        }else{
+          rect1_tl_x = rect1.tl().x;
+        }
+        if((abs(rect1.tl().y-rect.tl().y)<=2)){
+          rect1_tl_y = rect1.tl().y + diff;
+        }else{
+          rect1_tl_y = rect1.tl().y;
+        }
+        if((abs(rect1.br().x-rect.br().x)<=2)){
+          rect1_br_x = rect1.br().x - diff;
+        }else{
+          rect1_br_x = rect1.br().x;
+        }
+        if((abs(rect1.br().y-rect.br().y)<=2)){
+          rect1_br_y = rect1.br().y - diff;
+        }else{
+          rect1_br_y = rect1.br().y;
+        }
+        Rect newRect1(rect1_tl_x, rect1_tl_y, rect1_br_x-rect1_tl_x, rect1_br_y-rect1_tl_y);
+        rectangle(roi,newRect1,color, 2);
+        // draw picture border
+
+        rectangle(roi,rect, outColor, 2);
+        // rectangle(frame, cv::Point(roi_tl_x, roi_tl_y), cv::Point(roi_br_x, roi_br_y), CV_RGB(255,0,0));
 
         // save img
         vector<cv::String> file_names;
